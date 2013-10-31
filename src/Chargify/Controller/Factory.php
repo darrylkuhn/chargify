@@ -4,20 +4,25 @@ namespace Chargify\Controller;
 
 use Guzzle\Http\Client;
 use Guzzle\Plugin\CurlAuth\CurlAuthPlugin;
+use Guzzle\Log\Zf1LogAdapter;
+use Guzzle\Plugin\Log\LogPlugin;
+use Guzzle\Log\MessageFormatter;
 use Exception;
 
 class Factory
 {
     private $domain = null;
-    private $api_key = null;
+    private $apiKey = null;
+    public $debugLocation = '';
 
     /**
      * If called as instance set some basic variables for later use.
      */
-    public function __construct( $domain, $api_key )
+    public function __construct( $domain, $apiKey, $debugLocation=null )
     {
         $this->domain = $domain;
-        $this->api_key = $api_key;
+        $this->apiKey = $apiKey;
+        $this->debugLocation = $debugLocation;
     }
 
     /**
@@ -32,32 +37,40 @@ class Factory
      */
     public function __call( $name, $arguments )
     {
-        return self::build($name, $this->domain, $this->api_key );
+        return self::build( $name, $this->domain, $this->apiKey, $this->debugLocation );
     }
 
-    public static function build($type, $domain, $api_key) 
+    public static function build( $type, $domain, $apiKey, $debugLocation=null ) 
     {
-
         // Get the base url for all the connections.
         $base_url = sprintf('https://%s.chargify.com', $domain);
 
-        // Set the response format through the header.
-        $header = array(
-            'Content-Type' => 'application/json',
-            'Accept' => 'application/json'
-        );
+        // Set default headers to be sent on each request
+        $configOptions = [ 
+            'request.options' => [
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json' 
+                ],
+                'exceptions' => false,
+            ]
+        ];
+        
+        $client = new Client( $base_url, $configOptions );
+        $client->addSubscriber( new CurlAuthPlugin($apiKey, 'x') );
 
-        // Add the same basic authentication to all requests.
-        $basicAuth = new CurlAuthPlugin($api_key, 'x');
+        // If a debug location has been specified then add it to the options 
+        // when we instanciate our client.
+        if ( $debugLocation )
+        {
+            $fp = fopen( $debugLocation, 'w' );
+            $client->addSubscriber( LogPlugin::getDebugPlugin(true, $fp) );
+        }
 
-        $client = new Client($base_url);
-        $client->addSubscriber($basicAuth);
-        $client->setDefaultHeaders($header);
+        $className = 'Chargify\\Controller\\' . ucfirst($type);
 
-        $class_name = 'Chargify\\Controller\\' . ucfirst($type);
-
-        if (class_exists($class_name)) {
-            return new $class_name($client);
+        if ( class_exists($className) ) {
+            return new $className($client);
         }
         else {
             throw new Exception("Invalid controller type given.");

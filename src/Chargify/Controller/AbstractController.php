@@ -2,53 +2,84 @@
 
 namespace Chargify\Controller;
 
-abstract class AbstractController {
-  protected $client;
+use \Chargify\Exception\ResponseException;
+use \Exception;
+use \RuntimeException;
 
+abstract class AbstractController 
+{
+    /**
+     * @var \Guzzle\Http\ClientInterface
+     */
+    protected $client;
 
-  public function __construct(\Guzzle\Http\ClientInterface $client)
-  {
-    if (empty($client)) {
-      throw new Exception(t('Cannot create a controller instance without a specified REST client.'));
+    /**
+     * Build a Controller with the supplied Guzzle Client
+     */
+    public function __construct( \Guzzle\Http\ClientInterface $client )
+    {
+        $this->client = $client;
     }
 
-    $this->client = $client;
-  }
+    /**
+     * Issue a request to the specified URI using the HTTP verb specified by 
+     * $method including body content (if given).
+     * 
+     * @param string $uri 
+     * @param array $body payload ot include in request. will be converted to 
+     *        JSON
+     * @param string $method HTTP verb to use during call
+     * @return array
+     * @throws Exception, \Chargify\Exception\ResponseException
+     */
+    protected function request($uri, array $body = array(), $method = 'GET') 
+    {
+        $data = null;
 
-  protected function request($uri, $body = array(), $method = 'GET') {
-    $data = NULL;
+        $method = strtolower($method);
 
-    switch ($method) {
-      case 'POST':
-        $request = $this->client->post($uri);
-        $request->setBody(json_encode($body));
-        break;
+        // Build basic request using the method and URI supplied
+        $request = $this->client->$method( $uri );
+        
+        // If a body has been specified add it to the request... in theory a 
+        // caller could specify body content on a GET request but we'll expect 
+        // them to be smarter than that or let our HTTP client throw an 
+        // exception if not :)
+        if ( count($body) > 0 )
+        {
+            $request->setBody( json_encode($body) );
+        }
 
-      case 'PUT':
-        $request = $this->client->put($uri);
-        $request->setBody(json_encode($body));
-        break;
+        $response = $request->send();
 
-      case 'DELETE':
-        $request = $this->client->delete($uri);
-        break;
+        // Try to parse the response... it's possible (though very unlikely)
+        // that chargify could return a non-json response in which case we
+        // simply catch and rethrow the error up.
+        try 
+        {
+            $data = $response->json();
+        }
+        catch ( RuntimeException $e )
+        {
+            throw new Exception( 'Response from Chargify server was not valid JSON' );
+        }
+        
+        if ( ! $response->isSuccessful() ) 
+        {
+            throw new ResponseException( $response->getBody(), $response->getStatusCode() );
+        }
 
-      default: // GET
-        $request = $this->client->get($uri);
+        return $data;
     }
 
-    $response = $request->send();
-
-    if ($response->isSuccessful()) {
-      // TODO: Test if the response is JSON.
-      $data = $response->json();
+    /**
+     * Return the HTTP client set on this instance 
+     * 
+     * @return \Guzzle\Http\ClientInterface
+     */
+    public function getClient() 
+    {
+        return $this->client;
     }
-
-    return $data;
-  }
-
-  public function getClient() {
-    return $this->client;
-  }
 
 }

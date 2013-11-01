@@ -116,24 +116,21 @@ class Subscription extends AbstractController {
     }
 
     /**
-     * Cancel a subscription.
+     * Cancel a subscription at the end of the cycle.
      *
      * @param $id The Chargify subscription ID.
      */
-    public function cancelDelayed($id) {
+    public function cancelDelayed( $id, $message=null ) 
+    {
         $subscription = null;
 
-        $data = array(
-            'subscription' => array(
-                'cancel_at_end_of_period' => 1,
-            )
-        );
+        $data = ['subscription' => 
+            [ 'cancel_at_end_of_period' => 1,
+              'cancellation_message' => $message ]
+        ];
 
         $response = $this->request('subscriptions/' . $id, $data, 'PUT');
-
-        if (is_array($response) && is_array($response['subscription'])) {
-            $subscription = new Resource($response['subscription']);
-        }
+        $subscription = new Resource($response['subscription']);
 
         return $subscription;
     }

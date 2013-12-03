@@ -209,4 +209,19 @@ class Subscription extends AbstractController {
         return $subscription;
     }
 
+    /**
+     * Migrate a subscription from one product to another
+     *
+     * @param $id The Chargify subscription ID.
+     * @param $code The coupon code.
+     * @return  Updated subscription object on success.
+     */
+    public function migrate( $id, $data = array() ) 
+    {
+        $response = $this->request('subscriptions/' . $id . '/migrations', $data, 'POST');
+        $subscription = new Resource($response['subscription']);
+        
+        return $subscription;
+    }
+
 }

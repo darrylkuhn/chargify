@@ -11,7 +11,6 @@ class ChargeResource extends AbstractResource
     public $ending_balance_in_cents;
     public $type;
     public $transaction_type;
-    public $success;
     public $subscription_id;
     public $product_id;
     public $created_at;

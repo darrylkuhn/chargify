@@ -3,6 +3,7 @@
 namespace Chargify\Controller;
 
 use \Chargify\Resource\SubscriptionResource as Resource;
+use \Chargify\Resource\ChargeResource as Adjustment;
 
 class Subscription extends AbstractController {
 
@@ -222,6 +223,30 @@ class Subscription extends AbstractController {
         $subscription = new Resource($response['subscription']);
         
         return $subscription;
+    }
+
+    /**
+     * Issue an adjustment to the subscription
+     *
+     * @param $id The Chargify subscription ID.
+     * @param $amount in cents
+     * @param $memo optional description of why the memo was issued.
+     * @param $method defines if the amount is a delta (default) or target amount.
+     * @return  Updated subscription object on success.
+     */
+    public function adjust( $id, $amount, $memo='', $method=null ) 
+    {
+        $payload = [
+            'amount_in_cents' => $amount,
+            'memo' => $memo
+        ];
+
+        if ( $method ) $payload['method'] = $method;
+
+        $response = $this->request('subscriptions/' . $id . '/adjustments', ['adjustment' => $payload], 'POST');
+        $adjustment = new Adjustment( $response['adjustment'] );
+        
+        return $adjustment;
     }
 
 }

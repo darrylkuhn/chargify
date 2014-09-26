@@ -63,7 +63,7 @@ class Factory
         // when we instanciate our client.
         if ( $debugLocation )
         {
-            $fp = fopen( $debugLocation, 'w' );
+            $fp = fopen( $debugLocation, 'a' );
             $client->addSubscriber( LogPlugin::getDebugPlugin(true, $fp) );
         }
 

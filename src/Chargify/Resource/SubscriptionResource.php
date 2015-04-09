@@ -26,6 +26,7 @@ class SubscriptionResource extends AbstractResource {
   public $updated_at;
   public $created_at;
   public $activated_at;
+  public $referral_code;
 
   public function getName() {
     return 'subscription';
